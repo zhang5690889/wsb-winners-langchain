@@ -16,7 +16,7 @@ fetch_rss ──► analyze(LLM) ──► update_state ──► select_winners
 | 模块 | 说明 |
 |------|------|
 | `fetch` | RSS 抓取(UA 轮换 + 指数退避,标准库 urllib) |
-| `analyze` | **LangChain chain**: `PromptTemplate → ChatOpenAI.with_structured_output(PostAnalysis)` |
+| `analyze` | **LangChain chain**: `PromptTemplate → ChatOpenAI.with_structured_output(PostAnalysis)`,带**规则预筛层**(标题无晒盈亏特征/含企业新闻特征 → 跳过 LLM,省时省钱) |
 | `models` | Pydantic 结构化输出:is_gamble_post / gain / raw_gain / tickers |
 | `state` | JSON 状态(每位作者历史战绩),去重只挡历史 append,不误伤今日候选 |
 | `select` | 门槛选择:历史累计 ≥ $20k(🏆)或今日单笔 ≥ $10k(🆕),最多 6 位 |

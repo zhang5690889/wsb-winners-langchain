@@ -3,10 +3,14 @@
 用 `ChatPromptTemplate` + `ChatOpenAI.with_structured_output(PostAnalysis)`
 替代原脚本的正则解析 —— 由 LLM 直接判断是否晒盈亏帖并给出金额/代码,
 天然避免 "+18% vs $9,586" 这类正则误判。
+
+带规则预筛层: 标题明显不含金额/晒盈亏特征时跳过 LLM(省时省钱),
+只有疑似帖子才调用 LLM 精细解析。
 """
 from __future__ import annotations
 
 import logging
+import re
 from typing import Optional
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -16,6 +20,19 @@ from . import config
 from .models import PostAnalysis
 
 logger = logging.getLogger(__name__)
+
+# 快速预筛: 标题含以下特征才值得调 LLM(与旧脚本 is_gamble_post 同思路)
+_PRE_FILTER_RE = re.compile(
+    r"YOLO|GAIN|LOSS|P/L|\bPL\b|POSITION|LOST|PROFIT|\bAMA\b|PORTFOLIO|ACCOUNT|"
+    r"\$| DOLLAR|->|→|[+\-−]\s*\$?\s*[\d.,]+\s*[kKmMbB]?",
+    re.I,
+)
+# 企业新闻特征(即使带 $ 也不用调 LLM, 标题直接排除)
+_NEWS_RE = re.compile(
+    r"BILLION|TRILLION|LINES UP|SIGNS|STRIKES|RAISES|FINANCING| DEAL|FUNDING|"
+    r"ACQUIRES| PLAN|BOARD|REPORTS|EARNINGS|GUIDANCE| OFFER|SEC|FILES|WINS|WON",
+    re.I,
+)
 
 SYSTEM_PROMPT = """你是 r/wallstreetbets 帖子分析器。输入一条 WSB 帖子的标题和正文, 输出结构化分析:
 
@@ -58,6 +75,15 @@ def build_chain():
     return prompt | build_llm().with_structured_output(PostAnalysis)
 
 
+def _should_call_llm(title: str) -> bool:
+    """规则预筛: 标题有明显晒盈亏特征且不像企业新闻才值得调 LLM。"""
+    if not _PRE_FILTER_RE.search(title):
+        return False
+    if _NEWS_RE.search(title):
+        return False
+    return True
+
+
 def analyze_post(chain, title: str, body: str, max_body: int = 1500) -> PostAnalysis:
     """分析单帖; LLM 失败时降级返回保守空分析(不当作赢家)。"""
     try:
@@ -68,6 +94,15 @@ def analyze_post(chain, title: str, body: str, max_body: int = 1500) -> PostAnal
 
 
 def analyze_batch(chain, entries: list[dict], limit: Optional[int] = None) -> list[tuple[dict, PostAnalysis]]:
-    """批量分析; limit>0 时可只分析前 N 条(测试用)。"""
+    """批量分析; limit>0 时可只分析前 N 条(测试用)。
+
+    规则预筛: 标题不含晒盈亏特征/含企业新闻特征 → 直接降级为空分析, 不调 LLM。
+    """
     items = entries[:limit] if limit else entries
-    return [(e, analyze_post(chain, e["title"], e["body"])) for e in items]
+    results = []
+    for e in items:
+        if _should_call_llm(e["title"]):
+            results.append((e, analyze_post(chain, e["title"], e["body"])))
+        else:
+            results.append((e, PostAnalysis(is_gamble_post=False)))
+    return results

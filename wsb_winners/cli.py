@@ -61,8 +61,7 @@ def main(argv: list[str] | None = None) -> int:
     ok, err = send_email(subject, report.build_html_report(winners, hot))
     if not ok:
         print(f"❌ WSB 推荐邮件发送失败: {err}", file=sys.stderr)
-        print(f"❌ WSB 赢家推荐邮件发送失败({config.TODAY}) — 详见日志",
-              file=sys.stderr)
+        print(f"❌ WSB 赢家推荐邮件发送失败({config.TODAY}) — 详见日志")
         return 1
 
     names = ", ".join(w.author if w.author and w.author != "[deleted]"
