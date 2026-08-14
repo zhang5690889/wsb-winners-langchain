@@ -53,16 +53,29 @@ SYSTEM_PROMPT = """你是 r/wallstreetbets 帖子分析器。输入一条 WSB �
 
 
 def build_llm() -> ChatOpenAI:
-    if not config.OPENROUTER_API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY 未设置(见 .env.example)")
+    """按 LLM_GATEWAY 选择 endpoint 与 key。
+
+    tokenrouter(默认): 走 TOKENROUTER_API_KEY + DeepSeek Pro。
+    openrouter: 走 OPENROUTER_API_KEY, 可配 WSB_MODEL 用免费模型。
+    """
+    if config.LLM_GATEWAY == "openrouter":
+        api_key = config.OPENROUTER_API_KEY
+        base_url = config.OPENROUTER_BASE_URL
+        if not api_key:
+            raise RuntimeError("OPENROUTER_API_KEY 未设置(见 .env.example)")
+    else:
+        api_key = config.TOKENROUTER_API_KEY
+        base_url = config.TOKENROUTER_BASE_URL
+        if not api_key:
+            raise RuntimeError("TOKENROUTER_API_KEY 未设置(见 .env.example)")
     return ChatOpenAI(
         model=config.WSB_MODEL,
-        api_key=config.OPENROUTER_API_KEY,
-        base_url=config.OPENROUTER_BASE_URL,
+        api_key=api_key,
+        base_url=base_url,
         temperature=0,
         max_retries=2,
-        timeout=60,
-        max_tokens=512,
+        timeout=90,
+        max_tokens=1024,
     )
 
 

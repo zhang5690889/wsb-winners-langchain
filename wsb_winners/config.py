@@ -22,11 +22,17 @@ MAX_CANDIDATES = int(os.environ.get("WSB_MAX_CANDIDATES", "6"))
 RSS_URL = os.environ.get("WSB_RSS_URL",
                          "https://www.reddit.com/r/wallstreetbets/new.rss?limit=100")
 
-# LLM 配置(OpenRouter)
+# LLM 配置(TokenRouter 为主, OpenRouter 免费模型可选)
+TOKENROUTER_BASE_URL = os.environ.get("TOKENROUTER_BASE_URL",
+                                       "https://api.tokenrouter.com/v1")
+TOKENROUTER_API_KEY = os.environ.get("TOKENROUTER_API_KEY", "")
 OPENROUTER_BASE_URL = os.environ.get("OPENROUTER_BASE_URL",
                                      "https://openrouter.ai/api/v1")
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-WSB_MODEL = os.environ.get("WSB_MODEL", "deepseek/deepseek-v4-flash-0731")
+# 默认模型: tokenrouter 上的 DeepSeek Pro; WSB_MODEL 可覆盖为任何模型 id
+WSB_MODEL = os.environ.get("WSB_MODEL", "deepseek/deepseek-v4-pro")
+# 走哪个网关: tokenrouter(默认) 或 openrouter
+LLM_GATEWAY = os.environ.get("WSB_LLM_GATEWAY", "tokenrouter")
 
 # 路径
 HERE = os.path.dirname(os.path.abspath(__file__))
